@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AETHERIS — Infrared Image Enhancement & Colorization (BAH 2026 / ISRO-SAC)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='1.0.1') }}">
+</head>
+<body>
+    <!-- Background glow elements -->
+    <div class="glow-bg glow-1"></div>
+    <div class="glow-bg glow-2"></div>
+
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="brand">
+                <i class="fa-solid fa-satellite-dish brand-icon"></i>
+                <div class="brand-text">
+                    <h1>AETHERIS</h1>
+                    <span>ISRO-SAC BAH 2026 Space-Tech Pipeline</span>
+                </div>
+            </div>
+            <div class="pipeline-status">
+                <span class="status-dot green"></span>
+                <span id="model-status-text">Weights Loading...</span>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <div class="dashboard-grid">
+            
+            <!-- LEFT PANEL: CONTROLS -->
+            <section class="panel glass controls-panel">
+                <div class="panel-header">
+                    <i class="fa-solid fa-sliders"></i>
+                    <h2>Pipeline Control Center</h2>
+                </div>
+                
+                <div class="control-group">
+                    <label for="scene-select">Select Landscape Scene</label>
+                    <p class="field-desc">Choose a geographic target with physical thermal signatures.</p>
+                    <div class="custom-select-wrapper">
+                        <select id="scene-select">
+                            <!-- Populated dynamically via API -->
+                            <option value="urban">Urban Heat Island (Bhopal)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="scene-info-card glass">
+                    <h3 id="scene-title">Urban Heat Island</h3>
+                    <p id="scene-desc">High thermal concrete, cold rivers, distinct street patterns.</p>
+                </div>
+
+                <div class="control-group">
+                    <label>Thermal Colormap Mode</label>
+                    <div class="colormap-buttons">
+                        <button class="cmap-btn active" data-cmap="thermal">
+                            <i class="fa-solid fa-fire-flame-simple"></i> Pseudo-Thermal (Jet)
+                        </button>
+                        <button class="cmap-btn" data-cmap="gray">
+                            <i class="fa-solid fa-circle-half-stroke"></i> Grayscale Radiances
+                        </button>
+                    </div>
+                </div>
+
+                <button id="run-btn" class="glow-button">
+                    <span class="btn-text"><i class="fa-solid fa-circle-play"></i> Run Inference Pipeline</span>
+                    <span class="spinner hidden"><i class="fa-solid fa-circle-notch fa-spin"></i> Processing...</span>
+                </button>
+                
+                <div class="pipeline-flow-diagram">
+                    <h4>Two-Stage Execution Flow</h4>
+                    <div class="flow-steps">
+                        <div class="flow-step active" id="flow-step-1">
+                            <span class="step-num">1</span>
+                            <span class="step-lbl">TIR 200m</span>
+                        </div>
+                        <div class="flow-arrow"><i class="fa-solid fa-arrow-right-long"></i></div>
+                        <div class="flow-step" id="flow-step-2">
+                            <span class="step-num">2</span>
+                            <span class="step-lbl">SRNet 100m</span>
+                        </div>
+                        <div class="flow-arrow"><i class="fa-solid fa-arrow-right-long"></i></div>
+                        <div class="flow-step" id="flow-step-3">
+                            <span class="step-num">3</span>
+                            <span class="step-lbl">Color GAN</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MIDDLE PANEL: INTERACTIVE COMPARISON SLIDER -->
+            <section class="panel glass visualization-panel">
+                <div class="panel-header">
+                    <i class="fa-solid fa-images"></i>
+                    <h2>Interactive Split Comparison</h2>
+                </div>
+                
+                <div class="slider-controls">
+                    <div class="slider-mode-tabs">
+                        <button class="slider-tab active" data-slider-mode="sr">
+                            <i class="fa-solid fa-compress"></i> Super-Resolution (200m vs 100m)
+                        </button>
+                        <button class="slider-tab" data-slider-mode="color">
+                            <i class="fa-solid fa-palette"></i> Colorization (TIR vs RGB)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="comparison-container" id="comparison-slider">
+                    <!-- Left Image (Baseline / Low-res) -->
+                    <div class="image-slice slice-left">
+                        <img id="img-left" src="" alt="Left view">
+                        <div class="image-label label-left" id="lbl-left">Low-Res Input (200m)</div>
+                    </div>
+                    <!-- Right Image (Enhanced / Translated) -->
+                    <div class="image-slice slice-right">
+                        <img id="img-right" src="" alt="Right view">
+                        <div class="image-label label-right" id="lbl-right">Enhanced Output (100m)</div>
+                    </div>
+                    <!-- Slide Handle -->
+                    <div class="slider-handle">
+                        <div class="handle-line"></div>
+                        <div class="handle-button"><i class="fa-solid fa-arrows-left-right"></i></div>
+                        <div class="handle-line"></div>
+                    </div>
+                </div>
+                <p class="slider-tip"><i class="fa-solid fa-circle-info"></i> Drag the slider left and right to inspect edge details and structural alignment.</p>
+            </section>
+
+            <!-- RIGHT PANEL: METRICS & DIAGNOSTICS -->
+            <section class="panel glass metrics-panel">
+                <div class="panel-header">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <h2>Metrics & Diagnostics</h2>
+                </div>
+
+                <!-- METRIC CARD 1: RUNTIME -->
+                <div class="metric-card glass glow-card">
+                    <div class="metric-icon"><i class="fa-solid fa-gauge-high"></i></div>
+                    <div class="metric-details">
+                        <h3>Inference Latency</h3>
+                        <div class="metric-value"><span id="metric-time">--</span> <small>ms</small></div>
+                        <p class="metric-desc">Processing time per 128x128 tile (target < 50ms)</p>
+                    </div>
+                </div>
+
+                <!-- METRIC CARD 2: SUPER RESOLUTION -->
+                <div class="metric-card glass">
+                    <div class="metric-icon"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
+                    <div class="metric-details">
+                        <h3>Super-Resolution Fidelity</h3>
+                        <div class="metric-comparison-row">
+                            <div class="metric-sub-item">
+                                <span>Bilinear PSNR</span>
+                                <strong id="metric-sr-base-psnr">--</strong>
+                            </div>
+                            <div class="metric-sub-item">
+                                <span>SRNet PSNR</span>
+                                <strong id="metric-sr-model-psnr" class="highlight">--</strong>
+                            </div>
+                        </div>
+                        <div class="metric-comparison-row mt-10">
+                            <div class="metric-sub-item">
+                                <span>Bilinear SSIM</span>
+                                <strong id="metric-sr-base-ssim">--</strong>
+                            </div>
+                            <div class="metric-sub-item">
+                                <span>SRNet SSIM</span>
+                                <strong id="metric-sr-model-ssim" class="highlight">--</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- METRIC CARD 3: COLORIZATION -->
+                <div class="metric-card glass">
+                    <div class="metric-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <div class="metric-details">
+                        <h3>Colorization Quality</h3>
+                        <div class="metric-comparison-row">
+                            <div class="metric-sub-item">
+                                <span>RGB PSNR</span>
+                                <strong id="metric-color-psnr">--</strong>
+                            </div>
+                            <div class="metric-sub-item">
+                                <span>RGB SSIM</span>
+                                <strong id="metric-color-ssim" class="highlight">--</strong>
+                            </div>
+                        </div>
+                        <p class="metric-desc mt-10">Fidelity of Translated RGB vs Ground-Truth Landsat Composite</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- BOTTOM PANEL: SIDE-BY-SIDE FLOW VERIFICATION -->
+        <section class="panel glass flow-verification-panel mt-20">
+            <div class="panel-header">
+                <i class="fa-solid fa-circle-nodes"></i>
+                <h2>Complete Pipeline Output States</h2>
+            </div>
+            <div class="state-grid">
+                <div class="state-card glass">
+                    <h4>Low-Resolution Input (200m)</h4>
+                    <span class="resolution-badge">64 x 64 px</span>
+                    <div class="image-wrapper">
+                        <img id="grid-lr-tir" src="" alt="LR TIR">
+                    </div>
+                    <p>Coarse thermal sensor reading</p>
+                </div>
+                <div class="state-card glass">
+                    <h4>Super-Resolved TIR (100m)</h4>
+                    <span class="resolution-badge border-green">128 x 128 px</span>
+                    <div class="image-wrapper">
+                        <img id="grid-sr-tir" src="" alt="SR TIR">
+                    </div>
+                    <p>Enhanced structural details (SRNet)</p>
+                </div>
+                <div class="state-card glass">
+                    <h4>Colorized Composite (100m)</h4>
+                    <span class="resolution-badge border-green">128 x 128 px</span>
+                    <div class="image-wrapper">
+                        <img id="grid-pred-rgb" src="" alt="Colorized RGB">
+                    </div>
+                    <p>Physics-consistent translated RGB</p>
+                </div>
+                <div class="state-card glass">
+                    <h4>Ground Truth RGB Reference</h4>
+                    <span class="resolution-badge">128 x 128 px</span>
+                    <div class="image-wrapper">
+                        <img id="grid-gt-rgb" src="" alt="GT RGB">
+                    </div>
+                    <p>True natural color reference band</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- DIAGNOSTICS PANEL: TRAINING CURVES -->
+        <section class="panel glass training-curves-panel mt-20">
+            <div class="panel-header">
+                <i class="fa-solid fa-chart-area"></i>
+                <h2>Model Training Curves & Metrics Diagnostics</h2>
+            </div>
+            <div class="curves-container glass" style="padding: 16px; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden; border: 1px solid var(--glass-border);">
+                <img src="{{ url_for('static', filename='training_curves.png', v='1.0.1') }}" alt="Model Training Curves" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            </div>
+            <p class="slider-tip" style="margin-top: 10px;"><i class="fa-solid fa-circle-info"></i> These curves illustrate the training progress of both models on our simulated dataset. SRNet SSIM represents structure accuracy, and GAN L1 represents color composite similarity.</p>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <p>Developed for BAH 2026 / ISRO-SAC Problem Statement PS10. Powered by Generative Adversarial Networks & Physics-Informed Loss Constraints.</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/script.js', v='1.0.1') }}"></script>
+</body>
+</html>
